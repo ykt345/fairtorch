@@ -115,21 +115,21 @@ def evaluate_model(model, device, criterion, data_loader):
         "diff":flm.demographic_parity_difference(
             y_true,
             y_pred, 
-            sensitive_features= sensitive_features),
+            sensitive_features= sensitives),
         "ratio": flm.demographic_parity_ratio(
             y_true,
             y_pred, 
-            sensitive_features= sensitive_features),
+            sensitive_features= sensitives),
     }
     result["EO"] = {
         "diff":flm.equalized_odds_difference(
             y_true,
             y_pred, 
-            sensitive_features= sensitive_features),
+            sensitive_features= sensitives),
         "ratio": flm.equalized_odds_ratio(
             y_true,
             y_pred, 
-            sensitive_features= sensitive_features),
+            sensitive_features= sensitives),
     }
     return result
 
