@@ -2,6 +2,8 @@
 # https://archive.ics.uci.edu/ml/datasets/adult
 
 import copy 
+import random
+import os
 import sys
 import torch
 import numpy as np
@@ -19,6 +21,17 @@ from torch import optim
 import fairtorch
 import pprint
 
+def seed_everything(seed):
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+
+
+seed_everything(2020)
+torch.random.manual_seed(2020)
 
 class SensitiveDataset(Dataset):
     def __init__(self, x, y, sensitive):
@@ -137,6 +150,7 @@ def evaluate_model(model, device, criterion, data_loader):
 
 
 def train_and_eval(constraints=None):
+    print(" ")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     #device = "cpu"
     #print(device)
@@ -148,7 +162,7 @@ def train_and_eval(constraints=None):
     y_true = (data.target == '>50K') * 1
 
     # chance rate
-    print("chace rate= ", y_true.sum()/y_true.shape[0])
+    print("chance rate= ", y_true.sum()/y_true.shape[0])
     sex = data.data['sex']
     sex_bin = sex == "Male"
     # print(sex_bin)
@@ -156,25 +170,41 @@ def train_and_eval(constraints=None):
     dim_condition=2 
     dataset = SensitiveDataset(X, y_true, sex_bin)
 
-    train_size = len(dataset)
-    train_dataset, test_dataset = torch.utils.data.random_split(
-        dataset, [int(0.8 * train_size), train_size - int(0.8 * train_size)]
+    train_size = int(len(dataset) * 0.6)
+    valid_size = int(len(dataset) * 0.2)
+    test_size = len(dataset) - train_size - valid_size
+    print(f"n_train={train_size}, n_valid={valid_size}, n_test={test_size}")
+    train_dataset,valid_dataset,  test_dataset = torch.utils.data.random_split(
+        dataset, [train_size, valid_size, test_size]
     )
     #print(device)
     model = nn.Sequential(nn.Linear(feature_dim, 32), nn.Dropout(), nn.LeakyReLU(), nn.Linear(32, 1), nn.Dropout())
     model.to(device) 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.AdamW(model.parameters())
+    optimizer = optim.AdamW(model.parameters(), lr=0.001,  )
     train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
+    valid_loader = DataLoader(valid_dataset, batch_size=512, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=512, shuffle=False)
-    model = train_model(
-        data_loader=train_loader,
-        device=device,
-        model=model,
-        criterion=criterion,
-        constraints=constraints,
-        optimizer=optimizer,
-        max_epoch=30)
+    max_epoch = 1000
+    max_auc = 0
+    aucs = []
+    for i in range(max_epoch):
+        model = train_model(
+            data_loader=train_loader,
+            device=device,
+            model=model,
+            criterion=criterion,
+            constraints=constraints,
+            optimizer=optimizer,
+            max_epoch=1)
+        result = evaluate_model(model, device, criterion, valid_loader)
+        aucs.append(result['AUC'])
+        if i > 3:
+            if np.mean(aucs[-3:]) < max_auc :
+                print(f"train end at epoch={i+1}")
+                break
+        if result['AUC'] > max_auc:
+            max_auc = result['AUC']
     result = evaluate_model(model, device, criterion, test_loader)
     print("constraint: ", constraints)
     if constraints and isinstance(constraints, AdversarialDebiasingLoss):
@@ -198,15 +228,20 @@ def main():
     train_and_eval(None)
     train_and_eval(DemographicParityLoss(penalty="penalty", alpha=1))
     train_and_eval(DemographicParityLoss(penalty="penalty", alpha=10))
+    train_and_eval(DemographicParityLoss(penalty="penalty", alpha=100))
     train_and_eval(DemographicParityLoss(penalty="exact_penalty", alpha=1))
     train_and_eval(DemographicParityLoss(penalty="exact_penalty", alpha=10))
+    train_and_eval(DemographicParityLoss(penalty="exact_penalty", alpha=100))
     train_and_eval(EqualiedOddsLoss(penalty="penalty", alpha=1))
     train_and_eval(EqualiedOddsLoss(penalty="penalty", alpha=10))
     train_and_eval(EqualiedOddsLoss(penalty="exact_penalty", alpha=10))     
+    train_and_eval( constraints=AdversarialDebiasingLoss(parity="DP", n_layers=1, alpha=1) )
     train_and_eval( constraints=AdversarialDebiasingLoss(parity="DP", n_layers=1, alpha=10) )
+    train_and_eval( constraints=AdversarialDebiasingLoss(parity="DP", n_layers=1, alpha=100))
     train_and_eval( constraints=AdversarialDebiasingLoss(parity="EO", n_layers=1, alpha=10) )
-    train_and_eval( constraints=AdversarialDebiasingLoss(parity="DP", n_layers=1, alpha=100) )
+    train_and_eval( constraints=AdversarialDebiasingLoss(parity="DP", n_layers=4, alpha=1) )
     train_and_eval( constraints=AdversarialDebiasingLoss(parity="DP", n_layers=4, alpha=10) )
+    train_and_eval( constraints=AdversarialDebiasingLoss(parity="DP", n_layers=4, alpha=100) )
 
 if __name__=='__main__':
     main()
