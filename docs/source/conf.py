@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath('.'))
 
 project = 'fairtorch'
 copyright = '2021, Masayoshi Sode, Yoko Yabe, Akihiko Fukuchi'
-author = 'Masayoshi Sode, Yoko Yabe, Akihiko Fukuchi'
+author = 'Masashi Sode, Yoko Yabe, Akihiko Fukuchi'
 
 # The full version, including alpha/beta/rc tags
 release = '0.1.5'
