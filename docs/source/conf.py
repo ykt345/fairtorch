@@ -32,7 +32,7 @@ release = '0.1.5'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon'
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'recommonmark'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -50,6 +50,11 @@ language = 'ja'
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# for markdown
+source_suffix = ['.rst', '.md']
+source_parsers = {
+   '.md': 'recommonmark.parser.CommonMarkParser',
+}
 
 # -- Options for HTML output -------------------------------------------------
 
