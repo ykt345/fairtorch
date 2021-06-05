@@ -4,14 +4,19 @@
    contain the root `toctree` directive.
 
 FairTorch 
+
+.. image:: ..\source\image\20201224_header.png
+   :scale: 40%
+   :height: 100px
+   :width: 200px
+   :align: left
+
 =====================================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-
-Indices and tables
 ==================
 
 * :ref:`genindex`
